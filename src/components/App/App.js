@@ -20,6 +20,11 @@ class App extends Component {
       return;
     }
 
+    if (searchQuery === this.state.searchQuery) {
+      toast.warn('You are already on the page of this collection.');
+      return;
+    }
+
     this.setState({ searchQuery, isNewRequest: true });
   };
 

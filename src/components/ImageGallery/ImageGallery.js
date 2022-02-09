@@ -37,12 +37,12 @@ export default class ImageGallery extends Component {
     const prevSearchQuery = prevProps.searchQuery;
     const { page } = this.state;
 
-    if (this.props.isNewRequest) {
-      this.reset();
-      this.props.toggleStatusRequest();
-    }
-
     if (prevState.page !== page || prevSearchQuery !== searchQuery) {
+      if (this.props.isNewRequest) {
+        this.reset();
+        this.props.toggleStatusRequest();
+      }
+
       await this.getPictures(searchQuery, page);
 
       const isFinish = this.checkFinishCollections();
