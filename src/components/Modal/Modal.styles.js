@@ -23,5 +23,5 @@ export const ModalWindow = styled.div`
 
 export const Image = styled.img`
   border-radius: 8px;
-  width: 80vh;
+  width: 90vh;
 `;

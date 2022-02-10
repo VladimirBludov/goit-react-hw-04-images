@@ -1,21 +1,83 @@
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import api from '../../services/pixabay-api';
 import ImageGallery from 'components/ImageGallery';
 import Searchbar from 'components/Searchbar';
 import React, { Component } from 'react';
-import { AppContainer } from './App.styles';
+import { AppContainer, Warning } from './App.styles';
 import Modal from 'components/Modal';
+import Button from 'components/Button';
+import Loader from 'components/Loader';
+
+const INITIAL_STATE = {
+  gallery: [],
+  page: 1,
+  error: '',
+  isLoading: false,
+  searchQuery: '',
+  showModal: false,
+  imageSrcModal: '',
+};
 
 class App extends Component {
-  state = {
-    searchQuery: '',
-    isNewRequest: false,
-    showModal: false,
-    imageSrcModal: '',
+  state = { ...INITIAL_STATE };
+
+  componentDidUpdate(prevProps, prevState) {
+    const searchQuery = this.state.searchQuery;
+    const prevSearchQuery = prevState.searchQuery;
+    const { page } = this.state;
+
+    if (prevState.page !== page || prevSearchQuery !== searchQuery) {
+      this.getPictures(searchQuery, page);
+    }
+  }
+
+  getPictures = async (nextSearchQuery, nextPage) => {
+    this.setState({ isLoading: true });
+
+    try {
+      const response = await api.fetchPictures(nextSearchQuery, nextPage);
+
+      if (response?.data?.hits) {
+        const { hits, totalHits } = response.data;
+
+        this.setState(({ gallery }) => ({
+          gallery: [...gallery, ...hits],
+          error: '',
+        }));
+
+        this.checkFinishCollections(totalHits);
+        this.smoothScroll(nextPage);
+      }
+    } catch (error) {
+      this.setState({ error: error.message });
+    } finally {
+      this.setState({ isLoading: false });
+    }
   };
 
-  onSubmit = async searchQuery => {
-    if (!searchQuery?.trim()) {
+  checkFinishCollections = totalItems => {
+    const { gallery } = this.state;
+    if (gallery.length === totalItems) {
+      this.setState({
+        error: 'You have reached the end of the image collection.',
+      });
+    }
+  };
+
+  smoothScroll = nextPage => {
+    const heightGalleryItem = 260;
+
+    if (nextPage > 1) {
+      window.scrollBy({
+        top: heightGalleryItem * 2,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  onSubmit = searchQuery => {
+    if (!searchQuery.trim()) {
       toast.error('Please enter search parameters.');
       return;
     }
@@ -24,32 +86,39 @@ class App extends Component {
       toast.warn('You are already on the page of this collection.');
       return;
     }
+    this.reset();
+    this.setState({ searchQuery });
+  };
 
-    this.setState({ searchQuery, isNewRequest: true });
+  reset = () => this.setState({ ...INITIAL_STATE });
+
+  loadMore = () => {
+    this.setState(prevState => ({
+      page: prevState.page + 1,
+    }));
   };
 
   toggleModal = () => {
     this.setState(({ showModal }) => ({ showModal: !showModal }));
   };
 
-  getImageSrcModal = imageSrcModal => this.setState({ imageSrcModal });
-
-  toggleStatusRequest = () => {
-    this.setState(({ isNewRequest }) => ({ isNewRequest: !isNewRequest }));
+  openModal = imageSrcModal => {
+    this.setState({ imageSrcModal });
+    this.toggleModal();
   };
 
   render() {
-    const { searchQuery, isNewRequest, showModal, imageSrcModal } = this.state;
+    const { gallery, error, isLoading, showModal, imageSrcModal } = this.state;
+    const disabled = error ? true : false;
+    const isCollection = gallery.length > 0 ? true : false;
+
     return (
       <AppContainer>
         <Searchbar onSubmit={this.onSubmit} />
-        <ImageGallery
-          searchQuery={searchQuery}
-          isNewRequest={isNewRequest}
-          toggleStatusRequest={this.toggleStatusRequest}
-          toggleModal={this.toggleModal}
-          getImageSrcModal={this.getImageSrcModal}
-        />
+        <ImageGallery gallery={gallery} openModal={this.openModal} />
+        {isLoading && <Loader />}
+        {error && <Warning>{error}</Warning>}
+        {isCollection && <Button onClick={this.loadMore} disabled={disabled} />}
         <ToastContainer
           position="top-center"
           autoClose={3000}

@@ -12,13 +12,3 @@ export const Gallery = styled.ul`
   margin-left: auto;
   margin-right: auto;
 `;
-
-export const Warning = styled.div`
-  width: 100%;
-  padding: 15px;
-  text-align: center;
-  font-size: 20px;
-  font-weight: 500;
-  color: #fff;
-  background-color: lightcoral;
-`;
