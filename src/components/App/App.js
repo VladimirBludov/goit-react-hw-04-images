@@ -1,71 +1,62 @@
+import { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/pixabay-api';
 import ImageGallery from 'components/ImageGallery';
 import Searchbar from 'components/Searchbar';
-import React, { Component } from 'react';
 import { AppContainer, Warning } from './App.styles';
 import Modal from 'components/Modal';
 import Button from 'components/Button';
 import Loader from 'components/Loader';
 
-const INITIAL_STATE = {
-  gallery: [],
-  page: 1,
-  error: '',
-  isLoading: false,
-  searchQuery: '',
-  showModal: false,
-  imageSrcModal: '',
-};
+const PER_PAGE = 12;
 
-class App extends Component {
-  state = { ...INITIAL_STATE };
+export default function App() {
+  const [gallery, setGallery] = useState([]);
+  const [page, setPage] = useState(1);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [imageSrcModal, setImageSrcModal] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    const searchQuery = this.state.searchQuery;
-    const prevSearchQuery = prevState.searchQuery;
-    const { page } = this.state;
+  const disabled = error ? true : false;
+  const isCollection = gallery.length > 0 ? true : false;
 
-    if (prevState.page !== page || prevSearchQuery !== searchQuery) {
-      this.getPictures(searchQuery, page);
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
     }
-  }
 
-  getPictures = async (nextSearchQuery, nextPage) => {
-    this.setState({ isLoading: true });
+    const getPictures = async () => {
+      setIsLoading(true);
 
-    try {
-      const response = await api.fetchPictures(nextSearchQuery, nextPage);
+      try {
+        const response = await api.fetchPictures(searchQuery, page);
 
-      if (response?.data?.hits) {
-        const { hits, totalHits } = response.data;
+        if (response?.data?.hits) {
+          const { hits } = response.data;
 
-        this.setState(({ gallery }) => ({
-          gallery: [...gallery, ...hits],
-          error: '',
-        }));
+          setGallery(gallery => [...gallery, ...hits]);
+          setError('');
 
-        this.checkFinishCollections(totalHits);
-        this.smoothScroll(nextPage);
+          if (hits.length < PER_PAGE) {
+            setError('You have reached the end of the collection.');
+          } else setError('');
+
+          smoothScroll(page);
+        }
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      this.setState({ error: error.message });
-    } finally {
-      this.setState({ isLoading: false });
-    }
-  };
+    };
 
-  checkFinishCollections = totalItems => {
-    const { gallery } = this.state;
-    if (gallery.length === totalItems) {
-      this.setState({
-        error: 'You have reached the end of the image collection.',
-      });
-    }
-  };
+    getPictures();
+  }, [searchQuery, page]);
 
-  smoothScroll = nextPage => {
+  const smoothScroll = nextPage => {
     const heightGalleryItem = 260;
 
     if (nextPage > 1) {
@@ -76,61 +67,46 @@ class App extends Component {
     }
   };
 
-  onSubmit = searchQuery => {
-    if (!searchQuery.trim()) {
+  const onSubmit = newSearchQuery => {
+    if (!newSearchQuery.trim()) {
       toast.error('Please enter search parameters.');
       return;
     }
 
-    if (searchQuery === this.state.searchQuery) {
+    if (newSearchQuery === searchQuery) {
       toast.warn('You are already on the page of this collection.');
       return;
     }
-    this.reset();
-    this.setState({ searchQuery });
+    setPage(1);
+    setGallery([]);
+    setSearchQuery(newSearchQuery);
   };
 
-  reset = () => this.setState({ ...INITIAL_STATE });
-
-  loadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const openModal = imageSrcModal => {
+    setImageSrcModal(imageSrcModal);
+    setShowModal(true);
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal }));
-  };
-
-  openModal = imageSrcModal => {
-    this.setState({ imageSrcModal });
-    this.toggleModal();
-  };
-
-  render() {
-    const { gallery, error, isLoading, showModal, imageSrcModal } = this.state;
-    const disabled = error ? true : false;
-    const isCollection = gallery.length > 0 ? true : false;
-
-    return (
-      <AppContainer>
-        <Searchbar onSubmit={this.onSubmit} />
-        <ImageGallery gallery={gallery} openModal={this.openModal} />
-        {isLoading && <Loader />}
-        {error && <Warning>{error}</Warning>}
-        {isCollection && <Button onClick={this.loadMore} disabled={disabled} />}
-        <ToastContainer
-          position="top-center"
-          autoClose={3000}
-          hideProgressBar={true}
-          closeOnClick
+  return (
+    <AppContainer>
+      <Searchbar onSubmit={onSubmit} />
+      <ImageGallery gallery={gallery} openModal={openModal} />
+      {isLoading && <Loader />}
+      {error && <Warning>{error}</Warning>}
+      {isCollection && (
+        <Button onClick={() => setPage(page => page + 1)} disabled={disabled} />
+      )}
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={true}
+      />
+      {showModal && (
+        <Modal
+          onClose={() => setShowModal(false)}
+          imageSrcModal={imageSrcModal}
         />
-        {showModal && (
-          <Modal onClose={this.toggleModal} imageSrcModal={imageSrcModal} />
-        )}
-      </AppContainer>
-    );
-  }
+      )}
+    </AppContainer>
+  );
 }
-
-export default App;

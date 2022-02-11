@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { AiOutlineSearch } from 'react-icons/ai';
 import {
   LabelButton,
@@ -8,37 +9,35 @@ import {
   SearchbarContainer,
 } from './Searchbar.styles';
 
-export default class Searchbar extends Component {
-  state = {
-    searchQuery: '',
+export default function Searchbar({ onSubmit }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleChange = e => {
+    setSearchQuery(e.currentTarget.value);
   };
 
-  handleChange = e => {
-    const searchQuery = e.currentTarget.value;
-    this.setState({ searchQuery });
-  };
-
-  handleSubmit = e => {
+  const handleSubmit = e => {
     e.preventDefault();
 
-    this.props.onSubmit(this.state.searchQuery.toLowerCase());
-    this.setState({ searchQuery: '' });
+    onSubmit(searchQuery.toLowerCase());
+    setSearchQuery('');
   };
 
-  render() {
-    const { searchQuery } = this.state;
-    return (
-      <SearchbarContainer>
-        <Form onSubmit={this.handleSubmit}>
-          <ButtonSubmit>
-            <LabelButton>
-              <AiOutlineSearch size={24} />
-            </LabelButton>
-          </ButtonSubmit>
+  return (
+    <SearchbarContainer>
+      <Form onSubmit={handleSubmit}>
+        <ButtonSubmit>
+          <LabelButton>
+            <AiOutlineSearch size={24} />
+          </LabelButton>
+        </ButtonSubmit>
 
-          <InputSearch value={searchQuery} onChange={this.handleChange} />
-        </Form>
-      </SearchbarContainer>
-    );
-  }
+        <InputSearch value={searchQuery} onChange={handleChange} />
+      </Form>
+    </SearchbarContainer>
+  );
 }
+
+Searchbar.propTypes = {
+  onSubmit: PropTypes.func.isRequired,
+};

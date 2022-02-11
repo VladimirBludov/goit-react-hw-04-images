@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Backdrop, Image, ModalWindow } from './Modal.styles';
 import { createPortal } from 'react-dom';
@@ -7,54 +7,47 @@ import Loader from 'components/Loader';
 const modalRoot = document.querySelector('#modal-root');
 const html = document.querySelector('html');
 
-export default class Modal extends Component {
-  static propTypes = {
-    onClose: PropTypes.func.isRequired,
-    imageSrcModal: PropTypes.string.isRequired,
-  };
+export default function Modal({ onClose, imageSrcModal }) {
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  state = {
-    isLoaded: false,
-  };
+  useEffect(() => {
+    const handelKeyDownEsc = e => {
+      if (e.code === 'Escape') {
+        onClose();
+      }
+    };
 
-  componentDidMount() {
-    window.addEventListener('keydown', this.handelKeyDownEsc);
+    window.addEventListener('keydown', handelKeyDownEsc);
     html.classList.add('disable-scroll');
-  }
 
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handelKeyDownEsc);
-    html.classList.remove('disable-scroll');
-  }
+    return () => {
+      window.removeEventListener('keydown', handelKeyDownEsc);
+      html.classList.remove('disable-scroll');
+    };
+  }, [onClose]);
 
-  handelKeyDownEsc = e => {
-    if (e.code === 'Escape') {
-      this.props.onClose();
-    }
-  };
-
-  handelBackdropClick = e => {
+  const handelBackdropClick = e => {
     if (e.currentTarget === e.target) {
-      this.props.onClose();
+      onClose();
     }
   };
 
-  handleLoad = e => {
-    this.setState({ isLoaded: true });
-  };
-
-  render() {
-    const { imageSrcModal } = this.props;
-    const { isLoaded } = this.state;
-
-    return createPortal(
-      <Backdrop onClick={this.handelBackdropClick}>
-        <ModalWindow>
-          {!isLoaded && <Loader absolute />}
-          <Image src={imageSrcModal} alt="Large" onLoad={this.handleLoad} />
-        </ModalWindow>
-      </Backdrop>,
-      modalRoot
-    );
-  }
+  return createPortal(
+    <Backdrop onClick={handelBackdropClick}>
+      <ModalWindow>
+        {!isLoaded && <Loader absolute />}
+        <Image
+          src={imageSrcModal}
+          alt="Large"
+          onLoad={() => setIsLoaded(true)}
+        />
+      </ModalWindow>
+    </Backdrop>,
+    modalRoot
+  );
 }
+
+Modal.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  imageSrcModal: PropTypes.string.isRequired,
+};
